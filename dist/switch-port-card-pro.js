@@ -28,6 +28,7 @@ class SwitchPortCardPro extends HTMLElement {
       row2: "rx_tx_live",
       row3: "speed",
       color_scheme: "speed",
+      port_size: "medium",
     };
   }
 
@@ -46,6 +47,7 @@ class SwitchPortCardPro extends HTMLElement {
       row2: "rx_tx_live",
       row3: "speed",
       color_scheme: "speed",
+      port_size: "medium",
       ...config
     };
   }
@@ -131,7 +133,11 @@ class SwitchPortCardPro extends HTMLElement {
         .gauge{height:18px;background:var(--light-primary-color);border-radius:12px;overflow:hidden;margin:16px 0;display:none;position:relative}
         .gauge-fill{height:100%;background:linear-gradient(90deg,var(--label-badge-green,#4caf50),var(--label-badge-yellow,#ff9800) 50%,var(--label-badge-red,#f44336));background-size:300% 100%;width:100%;transition:background-position .8s ease}
         .section-label{font-size:0.9em;font-weight:600;color:var(--secondary-text-color);margin:8px 0 4px;text-align:center;width:100%}
-        .ports-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(${c?'40px':'50px'},1fr));gap:6px}
+        .ports-grid {
+          display: grid;
+          gap: 6px;
+          grid-template-columns: repeat(auto-fit, minmax(var(--port-min-width, 50px), 1fr));
+        }
         .port{aspect-ratio:2.6/1;background:var(--light-primary-color);border-radius:8px;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;font-weight:bold;font-size:0.80em;cursor:default;transition:all .15s;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.06);padding-top:6px}
         .port:hover{transform:scale(1.06);z-index:10}
         /* Row-1 group */
@@ -149,12 +155,53 @@ class SwitchPortCardPro extends HTMLElement {
         .port.on-100m{background:#ff9800;color:black}
         .port.on-10m{background:#f44336;color:white}
         .port.sfp{border:2px solid #2196f3!important;box-shadow:0 0 12px rgba(33,150,243,.45)!important}
+        .port.size-small,
+        .port.font-small {
+          --port-min-width: 38px;
+          font-size: 0.58em !important;
+          padding-top: 4px !important;
+        }
+        .port.size-medium,
+        .port.font-medium {
+          --port-min-width: 50px;     /* your original */
+          font-size: 0.80em !important;
+          padding-top: 6px !important;
+        }
+        .port.size-large,
+        .port.font-large {
+          --port-min-width: 64px;
+          font-size: 0.95em !important;
+          padding-top: 8px !important;
+        }
+        .port.size-xlarge,
+        .port.font-xlarge {
+          --port-min-width: 78px;
+          font-size: 1.15em !important;
+          padding-top: 10px !important;
+        }
+
+        /* Compact mode — cap the madness */
+        .compact .port.size-xlarge,
+        .compact .port.font-xlarge {
+          --port-min-width: 48px;
+          font-size: 0.72em !important;
+        }
+
+        /* Compact mode overrides (so it never gets too big) */
+        .compact .port.font-xlarge .port-num,
+        .compact .port.font-xlarge .port-row  { font-size: 0.68em !important; }
         .poe-indicator{position:absolute;top:4px;right:6px;font-size:0.7em;font-weight:bold;color:#00ff00;text-shadow:0 0 4px #000}
-        .compact .ports-grid{grid-template-columns:repeat(auto-fit,minmax(40px,1fr))}
+        .compact .ports-grid {
+          grid-template-columns: repeat(auto-fit, minmax(var(--port-min-width, 40px), 1fr));
+        }
         .compact .port{aspect-ratio:3.6/1!important;font-size:0.58em!important;padding-top:4px}
         .compact .system-grid{gap:8px;margin:8px 0 4px 0}
         .compact .info-box{padding:5px 6px}
-        @media(max-width:600px){.ports-grid{grid-template-columns:repeat(auto-fit,minmax(40px,1fr))}}
+        @media (max-width: 900px) {
+          .ports-grid {
+            grid-template-columns: repeat(auto-fit, minmax(var(--port-min-width, 40px), 1fr));
+          }
+        }
         /* HEATMAP COLORS */
         .heatmap-10 { background:#ff1744 !important; color:white !important; }
         .heatmap-9  { background:#ff5722 !important; color:white !important; }
@@ -264,7 +311,7 @@ class SwitchPortCardPro extends HTMLElement {
       this.shadowRoot.getElementById("system").innerHTML = `
         ${makeBox(cpu?.state != null ? Math.round(cpu.state) + "%" : null, "CPU")}
         ${makeBox(mem?.state != null ? Math.round(mem.state) + "%" : null, "Memory")}
-        ${makeBox(up?.state != null ? this._formatTime(Number(up.state)) : null, "Uptime")}
+        ${makeBox(up?.state != null ? this._formatTime(Number(up.state)) : null, "Up-time")}
         ${makeBox(host?.state, "Host")}
         ${makeBox(poe?.state != null ? poe.state + " W" : null, "PoE Total")}
         ${makeBox(fw?.state, "Firmware")}
@@ -463,7 +510,8 @@ class SwitchPortCardPro extends HTMLElement {
       // Apply custom background/text color for VLAN mode
       const div = document.createElement("div");
       div.className = `port ${speedClass} ${i>=sfpStart?"sfp":""} ${!isOn ? 'off' : ''}`;
-
+      const size = this._config.port_size || "medium";
+      div.classList.add(`size-${size}`);
       // === APPLY VLAN COLORING HERE ===
       if (this._config.color_scheme === "vlan") {
         const bg = vlan ? this._vlanColor(vlan) : "#607d8b";
@@ -645,6 +693,15 @@ class SwitchPortCardProEditor extends HTMLElement {
             <option value="heatmap" ${this._config.color_scheme === "heatmap" ? "selected" : ""}>Heatmap (Traffic)</option>
             <option value="vlan" ${this._config.color_scheme === "vlan" ? "selected" : ""}>VLAN Colored</option>
             <option value="actual_speed" ${this._config.color_scheme === "actual_speed" ? "selected" : ""}>Actual Speed</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Port Size</label>
+          <select data-key="port_size">
+            <option value="small"   ${this._config.port_size === "small"   ? "selected" : ""}>Small</option>
+            <option value="medium"  ${this._config.port_size === "medium"  ? "selected" : ""}>Medium (default)</option>
+            <option value="large"   ${this._config.port_size === "large"   ? "selected" : ""}>Large</option>
+            <option value="xlarge"  ${this._config.port_size === "xlarge"  ? "selected" : ""}>Extra Large</option>
           </select>
         </div>
         <div class="checkbox-row">
