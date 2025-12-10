@@ -16,3 +16,16 @@ See https://github.com/partach/switch_port_card_pro
   <br>
   <em>Live port status per switch with color coding: 10M/100M (orange), 1G (green), 10G (blue), DOWN (black)</em>
 </p>
+
+## Quick Install (with Integration)
+1. Install the **integration** first: HACS > Integrations > Search "Switch Port Card Pro" > Install.
+2. Install this **card**: HACS > Frontend > Search "Switch Port Card Pro" > Install.
+3. Reload page → Add to dashboard: `type: custom:switch-port-card-pro`.
+
+## Manual (No HACS)
+1. Download `switch-port-card-pro.js` from [releases](https://github.com/partach/switch_port_card_pro_card/releases).
+2. Save to `/config/www/community/switch-port-card-pro/switch-port-card-pro.js`.
+3. Settings > Dashboards > Resources > + Add: URL `/local/community/switch-port-card-pro/switch-port-card-pro.js` (Type: JS Module).
+4. Reload → Done.
+
+**Pro Tip:** Use the integration's auto-discovery for ports—card pulls live data instantly.
