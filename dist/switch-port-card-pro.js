@@ -135,7 +135,7 @@ class SwitchPortCardPro extends HTMLElement {
         /* Grid setup - will be overridden by JavaScript */
         .ports-grid {
           display: grid;
-          gap: 6px;
+          gap: 3px;
           grid-template-columns: repeat(auto-fit, minmax(var(--port-min-width, 50px), 1fr));
           --port-min-width: 50px;
         }
@@ -676,7 +676,7 @@ class SwitchPortCardProEditor extends HTMLElement {
         .row{margin:14px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
         label{min-width:160px;font-weight:500;color:var(--primary-text-color)}
         select,input{flex:1;padding:8px;border-radius:6px;border:1px solid var(--divider-color);background:var(--input-background-color,#444);color:var(--input-text-color,#fff)}
-        .checkbox-row{display:flex;align-items:center;gap:16px;margin:10px 0}
+        .checkbox-row{display:flex;align-items:center;gap:4px;margin:2px 0}
         .checkbox-label{font-weight:500;color:var(--primary-text-color);cursor:pointer}
 
         /* NEW: Grid layouts for compact fields */
