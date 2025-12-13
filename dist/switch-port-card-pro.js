@@ -1,4 +1,27 @@
 // switch-port-card-pro.js
+const DEFAULT_CONFIG = {
+  type: "custom:switch-port-card-pro",
+  name: "Network Switch",
+  device: "",
+  entity: "",
+  total_ports: 8,
+  sfp_start_port: 9,
+  custom_text: "Custom Value",
+  custom_port_text: "Custom Port Val.",
+  show_total_bandwidth: true,
+  max_bandwidth_gbps: 100,
+  compact_mode: false,
+  show_system_info: true,
+  show_port_type_labels: true,
+  row2: "rx_tx_live",
+  row3: "speed",
+  color_scheme: "speed",
+  port_size: "medium",
+  ports_per_row: 8,
+  hide_unused_port: false,
+  hide_unused_port_hours: 24,
+};
+
 class SwitchPortCardPro extends HTMLElement {
   constructor() {
     super();
@@ -9,60 +32,39 @@ class SwitchPortCardPro extends HTMLElement {
     return document.createElement("switch-port-card-pro-editor");
   }
 
+
   static getStubConfig() {
-    return {
-      type: "custom:switch-port-card-pro",
-      name: "Network Switch",
-      device: "",
-      entity: "sensor.mainswitch_total_bandwidth_mbps",
-      total_ports: 8,
-      sfp_start_port: 9,
-      custom_text: "Custom Value",
-      custom_port_text: "Custom Port Val.",
-      show_total_bandwidth: true,
-      max_bandwidth_gbps: 100,
-      compact_mode: false,
-      show_system_info: true,
-      show_port_type_labels: true,
-      row2: "rx_tx_live",
-      row3: "speed",
-      color_scheme: "speed",
-      port_size: "medium",
-      ports_per_row: 8,
-      hide_unused_week: false,
-    };
+    return { ...DEFAULT_CONFIG };
   }
 
   setConfig(config) {
+    if (!config) {
+      throw new Error("Invalid configuration");
+    }
+
     this._config = {
-      name: "Network Switch",
-      total_ports: 8,
-      sfp_start_port: 9,
-      custom_text: "Custom Value",
-      custom_port_text: "Custom Port Val.",
-      show_total_bandwidth: true,
-      max_bandwidth_gbps: 100,
-      compact_mode: false,
-      show_system_info: true,
-      show_port_type_labels: true,
-      row2: "rx_tx_live",
-      row3: "speed",
-      color_scheme: "speed",
-      port_size: "medium",
-      ports_per_row: 8,
-      hide_unused_week: false,
-      ...config
+      ...DEFAULT_CONFIG,
+      ...config,
     };
   }
 
   set hass(hass) {
     this._hass = hass;
-    if (!this._config) this._config = { total_ports:8, sfp_start_port:9, show_total_bandwidth:true, max_bandwidth_gbps:100, compact_mode:false, ports_per_row: 8 };
+
+    if (!this._config) {
+      console.warn("switch-port-card-pro: config not set yet");
+      return;
+    }
+
     if (!this._entities || this._lastHass !== hass) {
       this._entities = this._collectEntities(hass);
       this._lastHass = hass;
     }
-    if (!this.shadowRoot.querySelector("ha-card")) this._createSkeleton();
+
+    if (!this.shadowRoot.querySelector("ha-card")) {
+      this._createSkeleton();
+    }
+
     this._render();
   }
 
@@ -159,7 +161,6 @@ class SwitchPortCardPro extends HTMLElement {
           gap: 2px;
           background: var(--light-primary-color);
           border-radius: 4px;
-//          font-size: 0.80em;
           cursor: default;
           transition: all .15s;
           position: relative;
@@ -173,7 +174,6 @@ class SwitchPortCardPro extends HTMLElement {
           justify-content: center;
           gap: 6px;
           width: 100%;
-//          font-size: 0.95em;
           line-height: 1;
           flex-shrink: 0;
           margin-top: -4px;
@@ -183,7 +183,6 @@ class SwitchPortCardPro extends HTMLElement {
         .port-direction{font-size:1.05em;margin-left:4px}
         .port-status{font-size:0.9em;margin-top:4px}
         .port-row {
- //         font-size: 0.60em;
           line-height: 1.1;
           opacity: 0.95;
           white-space: nowrap;
@@ -435,11 +434,11 @@ class SwitchPortCardPro extends HTMLElement {
         str = str.toString().trim();
         let maxChars;
         switch (portSize) {
-          case "xsmall":   maxChars = 14; break;
-          case "small":   maxChars = 14; break;
-          case "medium":  maxChars = 13; break;
-          case "large":   maxChars = 11;  break;
-          case "xlarge":  maxChars = 9;  break;
+          case "xsmall":   maxChars = 12; break;
+          case "small":   maxChars = 11; break;
+          case "medium":  maxChars = 10; break;
+          case "large":   maxChars = 9;  break;
+          case "xlarge":  maxChars = 7;  break;
           default:        maxChars = 10;
         }
         return str.length <= maxChars ? str : str.slice(0, maxChars - 2) + "..";
@@ -459,11 +458,11 @@ class SwitchPortCardPro extends HTMLElement {
           return portIsOn ? (ctx.speedText || '\u00A0') : '\u00A0';
         case "port_custom":
         case "custom":
-          return truncate(ctx.port_custom, this._config.port_size || "medium") || '\u00A0';
+          return truncate(ctx.port_custom, this._config.port_size || "small") || '\u00A0';
         case "name":
-          return truncate(ctx.name, this._config.port_size || "medium") || '\u00A0';
+          return truncate(ctx.name, this._config.port_size || "small") || '\u00A0';
         case "interface":
-          return truncate(ctx.ifDescr, this._config.port_size || "medium") || '\u00A0';
+          return truncate(ctx.ifDescr, this._config.port_size || "small") || '\u00A0';
         case "vlan_id":
         case "vlan":
           return ctx.vlan ? `VLAN ${ctx.vlan}` : '\u00A0';
@@ -493,7 +492,7 @@ class SwitchPortCardPro extends HTMLElement {
     }
     const maxTraffic = Math.max(...allPorts.map(p => p.traffic), 1);
     const now = Date.now() / 1000;
-    const timeperiod = 24 * 3600 * 3;
+    const timeperiod = this._config.hide_unused_port_hours * 3600;
     for (let i = 1; i <= total; i++) {
       const ent = e[`port_${i}_status`];
       if (!ent) continue;
@@ -518,7 +517,7 @@ class SwitchPortCardPro extends HTMLElement {
       let customBg = null;
       let customTextColor = null;
 
-      if (!isOn && this._config.hide_unused_week && idleSeconds >= timeperiod) {
+      if (!isOn && this._config.hide_unused_port && idleSeconds >= timeperiod) {
         continue;
       }
       if (isOn) {
@@ -584,7 +583,7 @@ class SwitchPortCardPro extends HTMLElement {
       div.className = `port ${speedClass} ${i>=sfpStart?"sfp":""} ${!isOn ? 'off' : ''}`;
       const size = this._config.port_size || "medium";
       div.classList.add(`size-${size}`);
-
+      div.style.cursor = "pointer";
       // === APPLY VLAN COLORING HERE ===
       if (this._config.color_scheme === "vlan") {
         const bg = vlan ? this._vlanColor(vlan) : "#607d8b";
@@ -630,7 +629,23 @@ class SwitchPortCardPro extends HTMLElement {
         `\nRX: ${(rxBps / 1e6).toFixed(2)} Mb/s` +
         `\nTX: ${(txBps / 1e6).toFixed(2)} Mb/s` +
         (port_custom ? `\n${this._config.custom_port_text}: ${port_custom}` : "") +
-          `\n${lastSeen}`;
+        `\n${lastSeen}`;
+
+
+      // Visual feedback that port is clickable
+      div.style.cursor = "pointer";
+
+      // Optional: subtle hover effect enhancement (stacks with existing)
+      div.addEventListener("mouseenter", () => {
+        if (!div.classList.contains("off")) {
+          div.style.transform = "scale(1.08)";
+          div.style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
+        }
+      });
+      div.addEventListener("mouseleave", () => {
+        div.style.transform = "";
+        div.style.boxShadow = "";
+      });
       div.innerHTML = `
         <div class="row1">
           <span class="vlan-dot" style="background:${this._vlanColor(vlan)}"></span>
@@ -801,8 +816,9 @@ class SwitchPortCardProEditor extends HTMLElement {
           <span class="checkbox-label">Show Port Section Title (Copper/Fiber)</span>
         </div>
         <div class="checkbox-row">
-          <ha-checkbox data-key="hide_unused_week" ${this._config.hide_unused_week ? 'checked' : ''}></ha-checkbox>
-          <span class="checkbox-label">Hide Unused Ports (inactive >=3 days)</span>
+          <ha-checkbox data-key="hide_unused_port" ${this._config.hide_unused_port ? 'checked' : ''}></ha-checkbox>
+          <span class="checkbox-label">Hide Unused Ports</span>
+          <span class="field"><label>inactive for (>hours)</span><input type="text" data-key="hide_unused_port_hours" value="${this._config.hide_unused_port_hours || 0}">
         </div>
       </div>
     `;
