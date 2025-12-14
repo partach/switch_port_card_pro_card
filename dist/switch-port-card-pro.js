@@ -20,6 +20,7 @@ const DEFAULT_CONFIG = {
   ports_per_row: 8,
   hide_unused_port: false,
   hide_unused_port_hours: 24,
+  card_background_color: "rgba(var(--rgb-primary-background-color, 40, 40, 40), 0.4)",
 };
 
 class SwitchPortCardPro extends HTMLElement {
@@ -31,7 +32,6 @@ class SwitchPortCardPro extends HTMLElement {
   static getConfigElement() {
     return document.createElement("switch-port-card-pro-editor");
   }
-
 
   static getStubConfig() {
     return { ...DEFAULT_CONFIG };
@@ -117,6 +117,8 @@ class SwitchPortCardPro extends HTMLElement {
 
   _createSkeleton() {
     const c = this._config.compact_mode ? "compact" : "";
+    const hasRow3 = this._config.row3 && this._config.row3.toLowerCase() !== "none";
+
     this.shadowRoot.innerHTML = `
       <style>
         .section-hidden {
@@ -125,8 +127,8 @@ class SwitchPortCardPro extends HTMLElement {
         .section-hidden + .ports-grid {
           margin-top: 8px;
         }
-        :host{display:block;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color);padding:7px;border-radius:var(--ha-card-border-radius,12px);font-family:var(--ha-font-family,Roboto)}
-        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:1.2em;font-weight:600}
+        :host{display:block;color:var(--primary-text-color);padding:1px;border-radius:var(--ha-card-border-radius,12px);font-family:var(--ha-font-family,Roboto)}
+        .header{display:flex;;padding:12px;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:1.2em;font-weight:600}
         .system-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin:20px 0 8px 0}
         .info-box{background:rgba(var(--rgb-card-background-color,255,255,255),0.08);backdrop-filter:blur(8px);padding:7px 9px;border-radius:10px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.12)}
         .info-value{font-size:1.05em;font-weight:bold;line-height:1.05;margin:0}
@@ -137,6 +139,7 @@ class SwitchPortCardPro extends HTMLElement {
         .section-label{font-size:0.9em;font-weight:600;color:var(--secondary-text-color);margin:8px 0 4px;text-align:center;width:100%}
         .ports-grid {
           display: grid;
+          padding: 4px 0;
           gap: 3px;
           grid-template-columns: repeat(auto-fit, minmax(var(--port-min-width, 50px), 1fr));
           --port-min-width: 50px;
@@ -156,11 +159,11 @@ class SwitchPortCardPro extends HTMLElement {
         .port {
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
-          padding: 4px 2px 4px 2px !important;
+          justify-content: ${hasRow3 ? 'space-between' : 'flex-start'};
+          padding: ${hasRow3 ? '4px 2px 4px 2px' : '6px 2px'} !important;
           gap: 2px;
-          background: var(--light-primary-color);
           border-radius: 4px;
+          background: rgba(var(--rgb-primary-background-color, 0, 0, 0), 0.4);
           cursor: default;
           transition: all .15s;
           position: relative;
@@ -193,6 +196,14 @@ class SwitchPortCardPro extends HTMLElement {
           margin-top: 2px;
           display: flex;
           align-items: center;
+          justify-content: center;
+        }
+
+        /* Adjust spacing when row3 is hidden */
+        .port.no-row3 .port-row {
+          margin-top: 4px;
+        }
+        .port.no-row3 {
           justify-content: center;
         }
         .port.off{background:var(--disabled-background-color);opacity:0.95;color:var(--secondary-text-color)}
@@ -267,6 +278,9 @@ class SwitchPortCardPro extends HTMLElement {
         .vlan-colored { transition: background 0.4s ease, color 0.3s ease; }
 
         ha-card {
+          background: ${this._config.card_background_color || 'var(--ha-card-background, var(--card-background-color))'};
+          padding: 1px;
+          border-radius: var(--ha-card-border-radius, 8px);
           box-shadow: none !important;
           border: none !important;
         }
@@ -285,7 +299,6 @@ class SwitchPortCardPro extends HTMLElement {
       </ha-card>
     `;
 
-    // Apply ports_per_row setting immediately after creating skeleton
     this._applyPortsPerRow();
   }
 
@@ -297,6 +310,7 @@ class SwitchPortCardPro extends HTMLElement {
     if (hours > 0) return `${hours}h`;
     return "<1h";
   }
+
   _applyPortsPerRow() {
     if (!this.shadowRoot) return;
 
@@ -305,7 +319,6 @@ class SwitchPortCardPro extends HTMLElement {
     const sfpGrid = this.shadowRoot.getElementById("sfp");
 
     if (copperGrid && sfpGrid) {
-      // Set fixed columns based on config
       const gridStyle = `repeat(${portsPerRow}, 1fr)`;
       copperGrid.style.gridTemplateColumns = gridStyle;
       sfpGrid.style.gridTemplateColumns = gridStyle;
@@ -340,7 +353,6 @@ class SwitchPortCardPro extends HTMLElement {
   _render() {
     if (!this._hass || !this._config) return;
 
-    // Apply ports_per_row setting on every render
     this._applyPortsPerRow();
 
     const e = this._entities || {};
@@ -429,6 +441,9 @@ class SwitchPortCardPro extends HTMLElement {
     const renderRowContent = (field, ctx, portIsOn) => {
       const key = (field || "").toLowerCase().trim();
 
+      // Return null for "none" to skip rendering
+      if (key === "none") return null;
+
       const truncate = (str, portSize = "medium") => {
         if (!str) return '\u00A0';
         str = str.toString().trim();
@@ -479,6 +494,7 @@ class SwitchPortCardPro extends HTMLElement {
     copper.innerHTML = ""; sfp.innerHTML = "";
 
     const allPorts = [];
+    const hasRow3 = this._config.row3 && this._config.row3.toLowerCase() !== "none";
 
     for (let i = 1; i <= total; i++) {
       const ent = e[`port_${i}_status`];
@@ -488,11 +504,12 @@ class SwitchPortCardPro extends HTMLElement {
       const tx = parseFloat(ent.attributes?.tx_bps_live || 0) || 0;
       const vlan = ent.attributes?.vlan_id;
       allPorts.push({ i, traffic: rx + tx, vlan });
-
     }
+
     const maxTraffic = Math.max(...allPorts.map(p => p.traffic), 1);
     const now = Date.now() / 1000;
     const timeperiod = this._config.hide_unused_port_hours * 3600;
+
     for (let i = 1; i <= total; i++) {
       const ent = e[`port_${i}_status`];
       if (!ent) continue;
@@ -514,12 +531,11 @@ class SwitchPortCardPro extends HTMLElement {
       let speedClass = "off";
       let speedText = "OFF";
       let direction = "";
-      let customBg = null;
-      let customTextColor = null;
 
       if (!isOn && this._config.hide_unused_port && idleSeconds >= timeperiod) {
         continue;
       }
+
       if (isOn) {
         const totalBps = rxBps + txBps;
 
@@ -552,8 +568,6 @@ class SwitchPortCardPro extends HTMLElement {
 
           case "vlan":
             speedClass = "vlan-colored";
-            customBg = vlan ? this._vlanColor(vlan) : "#607d8b";
-            customTextColor = this._getContrastYIQ(customBg) < 128 ? "white" : "black";
             break;
 
           case "actual_speed":
@@ -646,15 +660,20 @@ class SwitchPortCardPro extends HTMLElement {
         div.style.transform = "";
         div.style.boxShadow = "";
       });
+      div.classList.toggle("no-row3", !hasRow3);
+
       div.innerHTML = `
         <div class="row1">
           <span class="vlan-dot" style="background:${this._vlanColor(vlan)}"></span>
           <span class="port-num">${i}</span>
           ${row1DirectionHTML}
         </div>
-        <div class="port-row">${row2Content}</div>
-        <div class="port-row">${row3Content}</div>
-        ${poeEnabled?'<div class="poe-indicator">P</div>':''}
+
+        ${row2Content !== null ? `<div class="port-row">${row2Content}</div>` : ``}
+
+        ${hasRow3 && row3Content !== null ? `<div class="port-row">${row3Content}</div>` : ``}
+
+        ${poeEnabled ? '<div class="poe-indicator">P</div>' : ''}
       `;
       (i < sfpStart ? copper : sfp).appendChild(div);
     }
@@ -691,6 +710,7 @@ class SwitchPortCardProEditor extends HTMLElement {
 
     // Options for rows
     const rowOptions = [
+      { val: "none",       label: "Hidden (hide row)" },
       { val: "rx_tx_live", label: "Live RX/TX (Mbps)" },
       { val: "rx_tx",      label: "Lifetime RX/TX" },
       { val: "speed",      label: "Speed" },
@@ -799,6 +819,14 @@ class SwitchPortCardProEditor extends HTMLElement {
             <option value="vlan" ${this._config.color_scheme === "vlan" ? "selected" : ""}>VLAN Colored</option>
             <option value="actual_speed" ${this._config.color_scheme === "actual_speed" ? "selected" : ""}>Actual Speed</option>
           </select>
+        </div>
+        <div class="row">
+          <label>Card Background Color</label>
+          <input
+            type="text"
+            data-key="card_background_color"
+            placeholder="rgba(0,0,0,0.4)"
+            value="${this._config.card_background_color || ''}">
         </div>
         <div class="checkbox-row">
           <ha-checkbox data-key="show_total_bandwidth" ${this._config.show_total_bandwidth!==false?'checked':''}></ha-checkbox>
