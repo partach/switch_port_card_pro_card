@@ -125,18 +125,22 @@ class SwitchPortCardPro extends HTMLElement {
           display: none !important;
         }
         .section-hidden + .ports-grid {
-          margin-top: 8px;
+          margin-top: 1px;
         }
         :host{display:block;color:var(--primary-text-color);padding:1px;border-radius:var(--ha-card-border-radius,12px);font-family:var(--ha-font-family,Roboto)}
-        .header{display:flex;;padding:12px;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:1.2em;font-weight:600}
+        .header{display:flex;padding: 6px 8px;justify-content:space-between;align-items:center;margin-bottom:2px;font-size:1.2em;font-weight:600}
         .system-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin:20px 0 8px 0}
         .info-box{background:rgba(var(--rgb-card-background-color,255,255,255),0.08);backdrop-filter:blur(8px);padding:7px 9px;border-radius:10px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.12)}
         .info-value{font-size:1.05em;font-weight:bold;line-height:1.05;margin:0}
         .info-label{font-size:0.8em;opacity:0.8;color:var(--secondary-text-color);line-height:1.2;margin-top:1px}
         .info-box.firmware .info-value{font-size:0.6em!important;font-weight:normal!important;line-height:1.3}
-        .gauge{height:18px;background:var(--light-primary-color);border-radius:12px;overflow:hidden;margin:16px 0;display:none;position:relative}
+        .gauge{height:18px;background:var(--light-primary-color);border-radius:12px;overflow:hidden;margin:18px 0;display:none;position:relative}
+        .gauge[style*="display: none"] {
+          margin: 0 !important;
+          height: 0 !important;
+        }
         .gauge-fill{height:100%;background:linear-gradient(90deg,var(--label-badge-green,#4caf50),var(--label-badge-yellow,#ff9800) 50%,var(--label-badge-red,#f44336));background-size:300% 100%;width:100%;transition:background-position .8s ease}
-        .section-label{font-size:0.9em;font-weight:600;color:var(--secondary-text-color);margin:8px 0 4px;text-align:center;width:100%}
+        .section-label{font-size:0.9em;font-weight:600;color:var(--secondary-text-color);margin:4px 0 4px;text-align:center;width:100%}
         .ports-grid {
           display: grid;
           padding: 4px 0;
@@ -160,12 +164,12 @@ class SwitchPortCardPro extends HTMLElement {
           display: flex;
           flex-direction: column;
           justify-content: ${hasRow3 ? 'space-between' : 'flex-start'};
-          padding: ${hasRow3 ? '4px 2px 4px 2px' : '6px 2px'} !important;
+          padding: ${hasRow3 ? '4px 2px 4px 2px' : '4px 2px'} !important;
           gap: 2px;
           border-radius: 4px;
           background: rgba(var(--rgb-primary-background-color, 0, 0, 0), 0.4);
           cursor: default;
-          transition: all .15s;
+          transition: none;
           position: relative;
           box-shadow: 0 1px 3px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.06);
         }
@@ -187,7 +191,7 @@ class SwitchPortCardPro extends HTMLElement {
         .port-status{font-size:0.9em;margin-top:4px}
         .port-row {
           line-height: 1.1;
-          opacity: 0.95;
+          opacity: 0.90;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -201,7 +205,7 @@ class SwitchPortCardPro extends HTMLElement {
 
         /* Adjust spacing when row3 is hidden */
         .port.no-row3 .port-row {
-          margin-top: 4px;
+          margin-top: 1px;
         }
         .port.no-row3 {
           justify-content: center;
@@ -275,7 +279,7 @@ class SwitchPortCardPro extends HTMLElement {
         .actual-off    { background:#191919 !important; color:white !important; }
 
         /* VLAN MODE */
-        .vlan-colored { transition: background 0.4s ease, color 0.3s ease; }
+        .vlan-colored { transition: none; }
 
         ha-card {
           background: ${this._config.card_background_color || 'var(--ha-card-background, var(--card-background-color))'};
@@ -350,6 +354,41 @@ class SwitchPortCardPro extends HTMLElement {
     return (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
   }
 
+_showPortDetails(portNum, descr, attrs) {
+  if (!this._hass) return;
+
+  const content = `
+**Port ${portNum} (${descr})**
+
+**State:** ${attrs.status || "Unknown"}  
+**Speed:** ${(attrs.speed_bps / 1e6 || 0).toFixed(0)} Mbps  
+**RX Live:** ${(attrs.rx_bps_live / 1e6 || 0).toFixed(2)} Mbps  
+**TX Live:** ${(attrs.tx_bps_live / 1e6 || 0).toFixed(2)} Mbps  
+**VLAN:** ${attrs.vlan_id || "None"}  
+**PoE Power:** ${attrs.poe_power_watts || 0} W (Enabled: ${attrs.poe_enabled ? "Yes" : "No"})  
+**Custom:** ${attrs.custom || "None"}  
+**Interface:** ${attrs.interface || "Unknown"}  
+**Type:** ${attrs.is_sfp ? "SFP" : "Copper"}
+  `.trim();
+
+  const browserMod = this._hass.states["browser_mod"];
+  if (browserMod) {
+    this._hass.callService("browser_mod", "popup", {
+      title: `Port ${portNum}`,  // Simple clean title (no markdown needed)
+      content: {
+        type: "markdown",
+        content: content,
+      },
+      style: {
+        "--ha-card-border-radius": "16px",
+        "--popup-padding": "16px",
+      },
+    });
+  } else {
+    alert(content.replace(/\*\*/g, ''));  // Strip ** for alert fallback
+  }
+}
+  
   _render() {
     if (!this._hass || !this._config) return;
 
@@ -644,22 +683,14 @@ class SwitchPortCardPro extends HTMLElement {
         `\nTX: ${(txBps / 1e6).toFixed(2)} Mb/s` +
         (port_custom ? `\n${this._config.custom_port_text}: ${port_custom}` : "") +
         `\n${lastSeen}`;
+      div.onclick = (ev) => {
+        ev.stopPropagation();
+        const attrs = this._entities[`port_${i}_status`]?.attributes || {};
+        this._showPortDetails(i, attrs.interface || `Port ${i}`, attrs);
+      };
+      div.style.cursor = "pointer";  // Show clickable cursor
 
 
-      // Visual feedback that port is clickable
-      div.style.cursor = "pointer";
-
-      // Optional: subtle hover effect enhancement (stacks with existing)
-      div.addEventListener("mouseenter", () => {
-        if (!div.classList.contains("off")) {
-          div.style.transform = "scale(1.08)";
-          div.style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
-        }
-      });
-      div.addEventListener("mouseleave", () => {
-        div.style.transform = "";
-        div.style.boxShadow = "";
-      });
       div.classList.toggle("no-row3", !hasRow3);
 
       div.innerHTML = `
@@ -874,3 +905,14 @@ class SwitchPortCardProEditor extends HTMLElement {
 
 customElements.define("switch-port-card-pro", SwitchPortCardPro);
 customElements.define("switch-port-card-pro-editor", SwitchPortCardProEditor);
+
+(function () {
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "switch-port-card-pro",
+    name: "Switch Port Card Pro",
+    description: "Visualize switch ports", 
+    preview: true,
+    preview_url: "custom_components/switch_port_card_pro/frontend/the_card.png"
+  });
+})();
