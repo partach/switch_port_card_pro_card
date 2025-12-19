@@ -1,5 +1,7 @@
 ## Changelog
-
+### [0.9.x] - Keep inline with integration
+- See integration release notes
+  
 ### [0.8.4] - Customize background color and hide rows
 - Added on user request a customizable bg color
 - Added on user request an option to hide the different rows in the port boxes
