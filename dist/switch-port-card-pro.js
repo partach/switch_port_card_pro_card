@@ -19,6 +19,7 @@ const DEFAULT_CONFIG = {
   ports_per_row: 8,
   hide_unused_port: false,
   hide_unused_port_hours: 24,
+  truncate_text: true,
   card_background_color: "rgba(var(--rgb-primary-background-color, 40, 40, 40), 0.4)",
   system_boxes: {
     cpu: true,
@@ -313,7 +314,7 @@ class SwitchPortCardPro extends HTMLElement {
         }
       </style>
       <ha-card>
-        <div class="header"><span id="title">Switch</span><span id="bandwidth">— Mbps</span></div>
+        <div class="header"><span id="title">Switch</span><span id="bandwidth"></span></div>
         <div class="gauge" id="gauge"><div class="gauge-fill" id="fill"></div></div>
         <div class="ports-section ${c}">
           <div class="section-label ${this._config.show_port_type_labels ? '' : 'section-hidden'}">COPPER</div>
@@ -450,18 +451,19 @@ class SwitchPortCardPro extends HTMLElement {
     let bwText = "— Mbps";
     if (bw?.state) {
       let val = Number(bw.state);
-      const u = (bw.attributes?.unit_of_measurement||"").toLowerCase();
+      const u = (bw.attributes?.unit_of_measurement || "").toLowerCase();
+      let unit = "Mbps";  // default
 
-      if (u.includes("mbit") && val > 1000) {
+      if (u.includes("gbit") || (u.includes("mbit") && val > 1000)) {
         val = val / 1000;
+        unit = "Gbps";
       } else if (u.includes("bit/s") && !u.includes("mbit") && !u.includes("kbit") && !u.includes("gbit")) {
         val = val / 1e6;
       } else if (u.includes("kbit")) {
         val = val / 1e3;
-      } else if (u.includes("gbit")) {
-        val = val * 1e3;
       }
-      bwText = `${val.toFixed(1)} Mbps`;
+
+      bwText = `${val.toFixed(1)} ${unit}`;
     }
     this.shadowRoot.getElementById("bandwidth").textContent = bwText;
 
@@ -490,22 +492,24 @@ class SwitchPortCardPro extends HTMLElement {
     else {
       this.shadowRoot.getElementById("system").innerHTML = ``;
     }
+    
+    // gauge
+    const gauge = this.shadowRoot.getElementById("gauge");
+    const fill = this.shadowRoot.getElementById("fill");
+    if (this._config.show_total_bandwidth !== false && bw?.state) {
+      gauge.style.display = "block";
 
-    // Gauge
-    const gauge=this.shadowRoot.getElementById("gauge"), fill=this.shadowRoot.getElementById("fill");
-    if (this._config.show_total_bandwidth!==false && bw?.state) {
-      gauge.style.display="block";
-      let val=Number(bw.state);
-      const u=(bw.attributes?.unit_of_measurement||"").toLowerCase();
+      let val = Number(bw.state);
+      const u = (bw.attributes?.unit_of_measurement || "").toLowerCase();
+      let maxInMbps = (this._config.max_bandwidth_gbps || 100) * 1000;  // default max in Mbps
 
-      if (u.includes("mbit") && val > 1000) {
-        val = val / 1000;
+      if (u.includes("gbit") || (u.includes("mbit") && val > 1000)) {
+        val = val / 1000;  // now in Gbps
+        maxInMbps = this._config.max_bandwidth_gbps || 100;  // max is already in Gbps
       } else if (u.includes("bit/s") && !u.includes("mbit") && !u.includes("kbit") && !u.includes("gbit")) {
-        val = val / 1e6;
+        val = val / 1e6;  // to Mbps
       } else if (u.includes("kbit")) {
-        val = val / 1e3;
-      } else if (u.includes("gbit")) {
-        val = val * 1e3;
+        val = val / 1e3;  // to Mbps
       }
 
       const pct=Math.min((val/((this._config.max_bandwidth_gbps||100)*1000))*100,100);
@@ -528,17 +532,23 @@ class SwitchPortCardPro extends HTMLElement {
       if (key === "none") return null;
 
       const truncate = (str, portSize = "medium") => {
+        if (this._config.truncate_text !== true) {
+          return str ?? '\u00A0';
+        }
+
         if (!str) return '\u00A0';
         str = str.toString().trim();
+
         let maxChars;
         switch (portSize) {
           case "xsmall":   maxChars = 12; break;
-          case "small":   maxChars = 11; break;
-          case "medium":  maxChars = 10; break;
-          case "large":   maxChars = 9;  break;
-          case "xlarge":  maxChars = 7;  break;
-          default:        maxChars = 10;
+          case "small":    maxChars = 11; break;
+          case "medium":   maxChars = 10; break;
+          case "large":    maxChars = 9;  break;
+          case "xlarge":   maxChars = 7;  break;
+          default:         maxChars = 10;
         }
+
         return str.length <= maxChars ? str : str.slice(0, maxChars - 2) + "..";
       };
 
